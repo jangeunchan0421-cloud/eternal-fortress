@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#101827">
+<title>Eternal Fortress | 판타지 타워 디펜스</title>
+<style>
+:root{color-scheme:dark;--bg:#0d1421;--panel:#172338;--line:#34445e;--gold:#f2c879;--muted:#a8b5c9;--text:#f4f6fb}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 50% 0,#253957 0,#111b2c 48%,#0b111c 100%);color:var(--text);font-family:system-ui,-apple-system,"Noto Sans KR",sans-serif;min-height:100vh}
+header{padding:22px 16px 12px;text-align:center}h1{font-family:Georgia,serif;letter-spacing:.08em;font-size:clamp(27px,5vw,44px);margin:0;color:#f4d89b;text-shadow:0 3px 20px #bd8a3c55}header p{margin:7px 0;color:var(--muted);font-size:14px}
+main{width:min(1100px,calc(100% - 24px));margin:0 auto 35px}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin:12px 0}.stat,.panel{background:linear-gradient(145deg,#1b2a41,#121d2e);border:1px solid var(--line);border-radius:13px}.stat{padding:10px 13px}.stat small{display:block;color:var(--muted);font-size:12px}.stat strong{font-size:clamp(17px,3vw,24px);font-variant-numeric:tabular-nums}.arena{padding:9px;background:#101a2a;border:1px solid #52617a;border-radius:15px;box-shadow:0 15px 50px #0007}
+canvas{display:block;width:100%;height:auto;border-radius:9px;background:#17243a;touch-action:manipulation}
+.top-command{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:10px 0 12px;padding:10px 12px;background:linear-gradient(145deg,#243650,#172438);border:1px solid #52617a;border-radius:13px;box-shadow:0 8px 24px #0004}
+.wave-controls{display:flex;align-items:center;gap:9px;flex-wrap:wrap}.wave-controls #start{min-width:150px;font-size:16px;padding:12px 20px;box-shadow:0 3px 14px #b77a3444}.wave-controls #waveStatus{font-size:12px;color:#d9c69f;margin-left:4px}
+.sound-controls{display:flex;align-items:center;gap:13px;flex-wrap:wrap;color:var(--muted);font-size:12px}.sound-controls label{display:flex;align-items:center;gap:5px}.sound-controls input[type=range]{width:85px;accent-color:#e3b66c}.sound-controls input[type=checkbox]{accent-color:#d8a75e}
+.controls{display:grid;grid-template-columns:1.1fr 1fr;gap:12px;margin-top:12px}.panel{padding:14px}.panel h2{font-size:15px;margin:0 0 11px;color:#f0d59d}
+.towers{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.tower{min-height:70px;padding:7px 4px}.tower b{display:block;font-size:14px}.tower small{color:var(--muted);font-size:11px}
+button{cursor:pointer;border:1px solid #52617a;background:#22334d;color:var(--text);border-radius:9px;padding:10px 12px;font:inherit;font-weight:650;transition:.15s}button:hover:not(:disabled){filter:brightness(1.2);transform:translateY(-1px)}button:disabled{opacity:.4;cursor:not-allowed}.tower.active{border-color:#f3cb79;background:#4a3b2b;box-shadow:inset 0 0 0 1px #f3cb79}
+.actions{display:flex;gap:8px;margin-top:9px}.actions button{flex:1}.primary{background:linear-gradient(135deg,#a66c2d,#805020);border-color:#e3b66c;color:white}.danger{background:#432532;border-color:#754050}
+#message{font-size:14px;font-weight:700;margin:0 0 4px}#hint,.help{color:var(--muted);font-size:12px;line-height:1.6}.selected{margin-top:9px;color:#d8c49d;font-size:12px;min-height:19px}
+footer{text-align:center;color:#8190a6;font-size:11px;padding:22px}
+@media(max-width:680px){.top-command{align-items:stretch}.wave-controls{width:100%}.wave-controls #start{flex:1}.sound-controls{width:100%;justify-content:space-between}.towers{grid-template-columns:repeat(2,1fr)}.controls{grid-template-columns:1fr}.stats{gap:6px}.stat{padding:8px}.tower{padding:8px 4px}.actions button{padding:10px 5px;font-size:13px}}
+</style>
+</head>
+<body>
+<header><h1>ETERNAL FORTRESS</h1><p>어둠의 군세로부터 마지막 왕국을 지켜라</p></header>
+<main>
+ <section class="stats">
+  <div class="stat"><small>골드</small><strong id="gold">300</strong></div>
+  <div class="stat"><small>성 체력</small><strong id="hp">20 / 20</strong></div>
+  <div class="stat"><small>웨이브</small><strong id="wave">0 / 20</strong></div>
+  <div class="stat"><small>처치</small><strong id="kills">0</strong></div>
+ </section>
+ <section class="top-command">
+  <div class="wave-controls"><button class="primary" id="start">웨이브 시작</button><button id="pause">일시정지</button><span id="waveStatus">전투 준비</span></div>
+  <div class="sound-controls">
+   <label><input id="soundOn" type="checkbox" checked> 효과음</label>
+   <label><input id="musicOn" type="checkbox"> 배경음</label>
+   <label>음량 <input id="volume" type="range" min="0" max="100" value="45"></label>
+  </div>
+ </section>
+ <div class="arena"><canvas id="field" width="960" height="430" aria-label="타워 디펜스 전장"></canvas></div>
+ <section class="controls">
+  <div class="panel">
+   <h2>방어 시설 건설</h2>
+   <div class="towers">
+    <button class="tower active" data-type="archer"><b>🏹 궁수</b><small>100G · 빠른 공격</small></button>
+    <button class="tower" data-type="mage"><b>🔮 마법사</b><small>180G · 광역 공격</small></button>
+    <button class="tower" data-type="knight"><b>🛡 기사</b><small>220G · 강력한 공격</small></button>
+    <button class="tower" data-type="artillery"><b>💣 포병</b><small>260G · 폭발 피해</small></button>
+    <button class="tower" data-type="priest"><b>✚ 사제</b><small>240G · 타워 지원</small></button>
+    <button class="tower" data-type="assassin"><b>🗡 암살자</b><small>230G · 치명타</small></button>
+    <button class="tower" data-type="spirit"><b>❄ 정령술사</b><small>280G · 속성 공격</small></button>
+   </div>
+   <p class="help">빈 발판을 선택해 건설하세요. 타워는 최대 Lv.10이며 Lv.5에서 특성을 선택합니다. 특성 선택은 되돌릴 수 없습니다. 타워 철거 환급은 투자 골드의 20%입니다.</p>
+   <div class="actions"><button id="build">선택 위치에 건설</button><button id="upgrade" disabled>타워 강화</button><button id="demolish" class="danger" disabled>타워 철거</button></div>
+   <div class="actions"><button id="branchA" disabled>특성 A 선택</button><button id="branchB" disabled>특성 B 선택</button></div>
+   <div class="actions"><button id="fuseMode">융합 재료 선택</button><button id="fuse" disabled>영웅 타워 융합</button></div>
+   <div class="selected" id="detail">선택된 지점: 없음</div>
+   <div class="selected" id="statsDetail">능력치 비교: 타워를 선택하세요.</div>
+  </div>
+  <div class="panel">
+   <h2>전투 모드</h2>
+   <div class="actions" style="margin:0 0 12px">
+    <button id="campaignMode" class="active">캠페인 · 20웨이브</button>
+    <button id="endlessMode">무한 웨이브</button>
+   </div>
+   <h2>전투 지휘</h2>
+   <p id="message">전투 준비 완료</p><p id="hint">방어선을 구축한 뒤 첫 웨이브를 시작하세요.</p>
+   <div class="selected" id="mission">현재 임무: 첫 웨이브를 피해 없이 방어하세요. 성공 보상 100G</div>
+   <div class="actions"><button class="danger" id="reset">처음부터 다시</button></div>
+   <p class="help">적을 처치하면 골드를 얻습니다. 캠페인은 20웨이브 돌파가 목표이며, 무한 모드는 성이 함락될 때까지 계속됩니다. 5번째 웨이브마다 보스가 등장합니다.</p>
+  </div>
+ </section>
+</main>
+<footer>ETERNAL FORTRESS · 오프라인에서도 실행 가능한 브라우저 게임</footer>
+<script>
+(()=>{
+const canvas=document.getElementById('field'),ctx=canvas.getContext('2d'),W=960,H=430,ground=350;
+const $=id=>document.getElementById(id);
+const pads=[{x:170,y:285},{x:300,y:265},{x:430,y:285},{x:560,y:265},{x:690,y:285},{x:820,y:265}];
+const defs={
+ archer:{name:'궁수',cost:100,damage:24,rate:.48,range:205,color:'#d6ad64',shot:'#ffe39b'},
+ mage:{name:'마법사',cost:180,damage:52,rate:1.25,range:180,color:'#a88bfa',shot:'#d0b6ff'},
+ knight:{name:'기사',cost:220,damage:105,rate:1.7,range:155,color:'#72c8d9',shot:'#a5f1ff'},
+ artillery:{name:'포병',cost:260,damage:115,rate:2.5,range:225,color:'#d58b62',shot:'#ffad70'},
+ priest:{name:'사제',cost:240,damage:12,rate:1.2,range:190,color:'#f0d58b',shot:'#fff0b0'},
+ assassin:{name:'암살자',cost:230,damage:38,rate:.62,range:165,color:'#bd78a8',shot:'#f6a6d8'},
+ spirit:{name:'정령술사',cost:280,damage:62,rate:1.35,range:195,color:'#70c9c5',shot:'#9ffff0'}
+};
+const heroDefs={shadow:{name:'그림자 사수',damage:150,rate:.42,range:255,color:'#6c78a8',shot:'#a8b5ff'},element:{name:'원소 지배자',damage:210,rate:1.1,range:235,color:'#a77be8',shot:'#e1baff'},paladin:{name:'성기사',damage:230,rate:1.45,range:190,color:'#e5d18b',shot:'#fff1b5'},siege:{name:'파멸의 포격수',damage:390,rate:2.4,range:260,color:'#d46d58',shot:'#ff9b70'}};
+const recipes=[{a:'archer:rapid',b:'assassin:shadow',hero:'shadow'},{a:'mage:flame',b:'spirit:storm',hero:'element'},{a:'knight:guardian',b:'priest:blessing',hero:'paladin'},{a:'artillery:siege',b:'mage:flame',hero:'siege'}];
+let gold,hp,wave,kills,towers,enemies,shots,particles,selected,type,running,paused,spawnLeft,spawnTimer,last,ended,mode='campaign',fuseMode=false,fuseFirst=-1,missionDamageStart=20;
+let audioCtx=null,bgmTimer=null,bgmStep=0;
+function audioReady(){if(!audioCtx){const AC=window.AudioContext||window.webkitAudioContext;if(AC)audioCtx=new AC();}if(audioCtx&&audioCtx.state==='suspended')audioCtx.resume();}
+function tone(freq,duration,waveform='sine',gain=.035,slide=0){if((!$('soundOn').checked&&!$('musicOn').checked)||!audioCtx)return;const o=audioCtx.createOscillator(),g=audioCtx.createGain(),now=audioCtx.currentTime;o.type=waveform;o.frequency.setValueAtTime(freq,now);if(slide)o.frequency.exponentialRampToValueAtTime(Math.max(35,freq+slide),now+duration);g.gain.setValueAtTime(gain*(+$('volume').value/100),now);g.gain.exponentialRampToValueAtTime(.001,now+duration);o.connect(g);g.connect(audioCtx.destination);o.start(now);o.stop(now+duration);}
+function sfx(kind){if(!audioCtx||!$('soundOn').checked)return;const sounds={archer:[620,.08,'triangle',.025,220],mage:[420,.22,'sine',.035,520],knight:[180,.12,'sawtooth',.025,-80],artillery:[95,.3,'sawtooth',.05,-55],priest:[740,.2,'sine',.025,300],assassin:[880,.09,'triangle',.025,-440],spirit:[510,.2,'sine',.03,650],shadow:[260,.22,'triangle',.04,700],element:[350,.28,'sine',.045,900],paladin:[500,.25,'triangle',.04,650],siege:[80,.4,'sawtooth',.055,-40],hit:[130,.07,'square',.012,-50],start:[440,.16,'triangle',.035,260],fusion:[330,.5,'sine',.05,900],victory:[660,.45,'sine',.04,440],defeat:[220,.5,'triangle',.04,-140]};const a=sounds[kind]||sounds.hit;tone(a[0],a[1],a[2],a[3],a[4]);}
+function musicTick(){if(!$('musicOn').checked||!audioCtx)return;const notes=[146.83,174.61,220,196,164.81,130.81];tone(notes[bgmStep%notes.length],.75,'sine',.012,0);bgmStep++;}
+function setMusic(){audioReady();if($('musicOn').checked){if(!bgmTimer){musicTick();bgmTimer=setInterval(musicTick,850);}}else if(bgmTimer){clearInterval(bgmTimer);bgmTimer=null;}}
+function upgradeCost(t){return t.hero?220+t.level*180:80+t.level*65;}
+function nextStats(t){return {damage:t.damage*(t.branch?(t.branch==='rapid'||t.branch==='flame'||t.branch==='siege'||t.branch==='shadow'?1.28:1.38):1.32),rate:t.rate*(t.branch==='rapid'||t.branch==='shadow'?.90:.94),range:t.range+(t.branch==='sniper'||t.branch==='siege'?16:8)};}
+function branchName(t){return ({rapid:'연사형',sniper:'저격형',flame:'화염 계열',frost:'냉기 계열',guardian:'수호자',destroyer:'파괴자',siege:'공성형',bombard:'폭격형',ward:'수호 계열',blessing:'축복 계열',shadow:'그림자 계열',executioner:'처형자 계열',fire:'화염 정령',storm:'폭풍 정령'})[t.branch]||'특성';}
+function chooseBranch(which){const t=towers.find(q=>q.pad===selected);if(!t||t.level<5||t.branch||t.hero)return;const map={archer:['rapid','sniper'],mage:['flame','frost'],knight:['guardian','destroyer'],artillery:['siege','bombard'],priest:['ward','blessing'],assassin:['shadow','executioner'],spirit:['fire','storm']};t.branch=map[t.type][which==='A'?0:1];if(t.branch==='rapid'||t.branch==='shadow')t.rate*=.82;if(t.branch==='sniper'||t.branch==='executioner')t.damage*=1.25;if(t.branch==='frost'||t.branch==='ward')t.range+=15;$('message').textContent=`${branchName(t)} 특성을 선택했습니다.`;update();draw();}
+function fusionRecipe(a,b){if(!a||!b||a.level<10||b.level<10||!a.branch||!b.branch)return null;return recipes.find(r=>(a.type+':'+a.branch===r.a&&b.type+':'+b.branch===r.b)||(b.type+':'+b.branch===r.a&&a.type+':'+a.branch===r.b));}
+function reset(){gold=220;hp=20;wave=0;kills=0;towers=[];enemies=[];shots=[];particles=[];selected=-1;type='archer';running=false;paused=false;spawnLeft=0;spawnTimer=0;last=0;ended=false;fuseMode=false;fuseFirst=-1;missionDamageStart=20;$('mission').textContent='현재 임무: 피해 없이 웨이브 방어 · 성공 보상 100G';$('fuseMode').textContent='융합 재료 선택';
+ document.querySelectorAll('[data-type]').forEach(b=>b.classList.toggle('active',b.dataset.type===type));
+ $('campaignMode').classList.toggle('active',mode==='campaign');$('endlessMode').classList.toggle('active',mode==='endless');$('campaignMode').disabled=false;$('endlessMode').disabled=false;
+ $('waveStatus').textContent='전투 준비';$('message').textContent='전투 준비 완료';$('hint').textContent=mode==='endless'?'성 체력이 다할 때까지 끝없이 몰려오는 적을 막으세요.':'20개 웨이브를 돌파해 왕국을 지키세요.';$('start').disabled=false;$('start').textContent='웨이브 시작';$('pause').textContent='일시정지';update();draw();}
+function update(){
+ $('gold').textContent=gold;$('hp').textContent=hp+' / 20';$('waveStatus').textContent=running?(paused?'일시정지':`WAVE ${wave} 진행 중`):`WAVE ${wave} 대기`;$('wave').textContent=mode==='endless'?wave+' / ∞':wave+' / 20';$('kills').textContent=kills;
+ const t=towers.find(t=>t.pad===selected);
+ $('build').disabled=selected<0||!!t||gold<defs[type].cost||ended;
+ $('upgrade').disabled=!t||t.level>=(t.hero?5:10)||(!t.hero&&t.level===5&&!t.branch)||gold<upgradeCost(t)||ended;
+ $('demolish').disabled=!t||ended;
+ $('branchA').disabled=!t||t.hero||t.level<5||!!t.branch||ended;$('branchB').disabled=!t||t.hero||t.level<5||!!t.branch||ended;
+ $('branchA').textContent=t&&t.type==='archer'?'연사형':t&&t.type==='mage'?'화염 계열':t&&t.type==='knight'?'수호자':t&&t.type==='artillery'?'공성형':t&&t.type==='priest'?'수호 계열':t&&t.type==='assassin'?'그림자 계열':'화염 정령';
+ $('branchB').textContent=t&&t.type==='archer'?'저격형':t&&t.type==='mage'?'냉기 계열':t&&t.type==='knight'?'파괴자':t&&t.type==='artillery'?'폭격형':t&&t.type==='priest'?'축복 계열':t&&t.type==='assassin'?'처형자 계열':'폭풍 정령';
+ $('fuse').disabled=!fuseMode||fuseFirst<0||!t||t.pad===fuseFirst||!fusionRecipe(towers.find(q=>q.pad===fuseFirst),t)||ended;
+ $('detail').textContent=t?`${t.hero?heroDefs[t.hero].name:defs[t.type].name} Lv.${t.level}${t.branch?' · '+branchName(t):''} · 공격력 ${Math.round(t.damage)} · 공격속도 ${(1/t.rate).toFixed(2)}/초 · 사거리 ${Math.round(t.range)} · 철거 환급 ${Math.floor(t.invested*.2)}G`:(selected<0?'선택된 지점: 없음':`선택된 발판 ${selected+1} · 건설 가능`);
+ const cost=t?upgradeCost(t):0;const next=t?nextStats(t):null;$('statsDetail').textContent=t?`강화 ${cost}G | 공격력 ${Math.round(t.damage)} → ${Math.round(next.damage)} (+${Math.round(next.damage-t.damage)}) | 공격속도 ${(1/t.rate).toFixed(2)} → ${(1/next.rate).toFixed(2)}/초 | 사거리 ${Math.round(t.range)} → ${Math.round(next.range)}${t.level===4&&!t.branch?' | Lv.5에서 특성 선택 가능':''}${t.level===5&&!t.branch?' | 다음 강화 전에 특성을 선택하세요':''}${t.level===9&&!t.hero?' | Lv.10 융합 조건 달성':''}`:'능력치 비교: 타워를 선택하세요.';
+}
+function begin(){if(running||ended)return;audioReady();sfx('start');wave++;missionDamageStart=hp;running=true;paused=false;spawnLeft=Math.min(7+wave*2+(wave%5===0?2:0),50);spawnTimer=1.05;spawn();$('campaignMode').disabled=true;$('endlessMode').disabled=true;$('start').disabled=true;$('message').textContent=`WAVE ${wave} · 전투 중`;$('hint').textContent=wave%5===0?'보스 출현! 방어선을 지켜라.':mode==='endless'?'무한 생존 모드 · 웨이브가 진행될수록 적이 강해집니다.':'몬스터 무리가 접근하고 있습니다.';update();}
+function spawn(){const boss=wave%5===0&&spawnLeft===1,armored=!boss&&wave>=3&&Math.random()<.2,fast=!boss&&!armored&&Math.random()<.24;
+ const scale=mode==='endless'?(1+wave*.20+Math.floor(wave/8)*.15):(1+wave*.25);
+ const base=boss?1650:armored?330:fast?125:175;
+ enemies.push({x:925,y:ground-19,hp:base*scale,max:base*scale,speed:(boss?19:armored?25:fast?68:38)*(1+wave*.03),r:boss?30:15,boss,armored,fast,reward:boss?220:armored?20:fast?11:13,hit:0});spawnLeft--;}
+function shoot(t,e){const kind=t.type.startsWith('hero-')?t.type.slice(5):t.type;sfx(kind);shots.push({x:t.x,y:t.y-25,ox:t.x,oy:t.y-25,target:e,damage:t.damage,type:t.type,branch:t.branch,speed:t.type==='artillery'||t.type==='hero-siege'?330: t.type==='assassin'||t.type==='hero-shadow'?570:450,age:0});}
+function burst(x,y,color,count=9,style='spark'){for(let i=0;i<count;i++){const a=Math.PI*2*i/count+Math.random()*.25,sp=35+Math.random()*115;particles.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:.28+Math.random()*.32,max:.6,color,style,r:2+Math.random()*3});}}
+function step(dt){particles.forEach(p=>{p.x+=p.vx*dt;p.y+=p.vy*dt;p.vx*=.96;p.vy*=.96;p.life-=dt;});particles=particles.filter(p=>p.life>0);if(!running||paused||ended)return;
+ spawnTimer-=dt;if(spawnLeft>0&&spawnTimer<=0){spawn();spawnTimer=Math.max(.38,1.05-wave*.025);}
+ enemies.forEach(e=>{e.x-=e.speed*(e.slowUntil>0?.72:1)*dt;if(e.slowUntil>0)e.slowUntil-=dt;if(e.burn>0){e.hp-=e.burnDps*dt;e.burn-=dt;if(e.hp<=0&&!e.dead){e.dead=true;gold+=e.reward;kills++;}}if(e.hit>0)e.hit-=dt;if(e.x<68){e.dead=true;hp-=e.boss?5:1;}});
+ towers.forEach(t=>{if(t.type==='priest'){towers.filter(o=>o!==t&&Math.hypot(o.x-t.x,o.y-t.y)<t.range).forEach(o=>{o.supportBoost=1.18;});}t.cool-=dt;if(t.cool<=0){const target=enemies.filter(e=>!e.dead&&Math.hypot(e.x-t.x,e.y-t.y)<t.range).sort((a,b)=>a.x-b.x)[0];if(target){const supported=towers.some(o=>o!==t&&o.type==='priest'&&Math.hypot(o.x-t.x,o.y-t.y)<o.range);const blessed=towers.some(o=>o!==t&&o.type==='priest'&&o.branch==='blessing'&&Math.hypot(o.x-t.x,o.y-t.y)<o.range);let dmg=t.damage*(supported?1.18:1)*(blessed?1.12:1)*(t.type==='assassin'&&Math.random()<.22?2.4:1)*(t.branch==='executioner'&&target.boss?1.65:1)*(t.type==='priest'?.7:1);shoot({...t,damage:dmg,type:t.hero?'hero-'+t.hero:t.type},target);t.cool=t.rate;}}});
+ shots.forEach(s=>{const e=s.target;if(e.dead){s.dead=true;return;}const dx=e.x-s.x,dy=(e.y-e.r*.3)-s.y,d=Math.hypot(dx,dy),move=s.speed*dt;if(d<=move+8){e.hp-=s.damage;e.hit=.12;const k=s.type.startsWith('hero-')?s.type.slice(5):s.type;const col=(s.type.startsWith('hero-')?heroDefs[k]?.shot:defs[k]?.shot)||'#fff';burst(e.x,e.y,col,s.type==='artillery'||s.type==='hero-siege'?18:s.type==='mage'||s.type==='hero-element'?14:8,s.type);sfx('hit');if(s.branch==='frost'||s.branch==='storm'||s.type==='spirit'||s.type==='hero-element')e.slowUntil=1.4;if(s.branch==='flame'||s.branch==='fire'){e.burn=2.5;e.burnDps=s.damage*.18;}if(s.type==='mage'||s.type==='artillery'||s.type==='hero-element'||s.type==='hero-siege')enemies.forEach(o=>{if(o!==e&&!o.dead&&Math.hypot(o.x-e.x,o.y-e.y)<(s.type==='artillery'||s.type==='hero-siege'?85:60))o.hp-=s.damage*.45;});if(e.hp<=0&&!e.dead){e.dead=true;gold+=e.reward;kills++;}s.dead=true;}else{s.x+=dx/d*move;s.y+=dy/d*move;}});
+ enemies=enemies.filter(e=>!e.dead);shots=shots.filter(s=>!s.dead);
+ if(hp<=0){hp=0;ended=true;running=false;sfx('defeat');$('message').textContent='성 함락 · 패배';$('hint').textContent=`${wave} 웨이브까지 버텼습니다.`;$('start').textContent='게임 종료';}
+ else if(spawnLeft===0&&enemies.length===0){running=false;gold+=35+wave*8;const missionWon=hp===missionDamageStart;if(missionWon){gold+=100;$('mission').textContent=`임무 성공! 피해 없이 ${wave}웨이브 방어 · 보상 100G`; }else{$('mission').textContent=`임무 실패 · 성 피해 없이 방어하지 못했습니다. 다음 웨이브에서 다시 도전하세요.`;}if(mode==='campaign'&&wave>=20){ended=true;sfx('victory');$('message').textContent='승리! 왕국을 지켜냈다!';$('hint').textContent='20개 웨이브를 모두 돌파했습니다.';$('start').textContent='승리';}else{$('message').textContent=`WAVE ${wave} 클리어!`;$('hint').textContent=`보상 ${35+wave*8}G${missionWon?' + 임무 보상 100G':''} 획득 · 다음 웨이브에 대비하세요.`;$('start').disabled=false;$('start').textContent='다음 웨이브';}}
+ update();}
+function draw(){
+ ctx.clearRect(0,0,W,H);let sky=ctx.createLinearGradient(0,0,0,H);sky.addColorStop(0,'#172741');sky.addColorStop(1,'#596174');ctx.fillStyle=sky;ctx.fillRect(0,0,W,H);
+ for(let i=0;i<55;i++){let x=(i*173+35)%W,y=15+(i*61)%195;ctx.fillStyle=i%3?'#d9e8ff':'#f9d98a';ctx.globalAlpha=.25+(i%4)*.12;ctx.fillRect(x,y,2,2);}ctx.globalAlpha=1;
+ ctx.fillStyle='#263d3a';ctx.beginPath();ctx.moveTo(0,ground-12);for(let x=0;x<=W;x+=45)ctx.lineTo(x,ground-12+Math.sin(x*.022)*9);ctx.lineTo(W,H);ctx.lineTo(0,H);ctx.fill();
+ ctx.fillStyle='#806647';ctx.fillRect(0,ground,W,80);ctx.fillStyle='#b09268';ctx.fillRect(0,ground,W,7);for(let x=0;x<W;x+=38){ctx.fillStyle='#6e573f';ctx.fillRect(x,ground+20,20,3);}
+ // castle
+ ctx.fillStyle='#53647a';ctx.fillRect(10,ground-108,60,108);ctx.fillStyle='#8194a8';ctx.fillRect(5,ground-120,70,17);ctx.fillStyle='#344357';ctx.fillRect(27,ground-66,27,66);
+ for(let x=8;x<72;x+=25){ctx.fillStyle='#71849a';ctx.fillRect(x,ground-139,14,22);ctx.fillRect(x+2,ground-145,10,8);}
+ ctx.fillStyle='#e6c57e';ctx.font='bold 13px sans-serif';ctx.fillText('CASTLE',10,ground+61);
+ pads.forEach((p,i)=>{ctx.fillStyle=selected===i?'#d7bd75':'#786f62';ctx.beginPath();ctx.ellipse(p.x,p.y+25,38,10,0,0,Math.PI*2);ctx.fill();ctx.fillStyle='#b29b78';ctx.fillRect(p.x-28,p.y+14,56,10);
+ const t=towers.find(t=>t.pad===i);if(t){if(selected===i){ctx.strokeStyle='rgba(255,232,155,.5)';ctx.beginPath();ctx.arc(t.x,t.y,t.range,0,Math.PI*2);ctx.stroke();}
+ ctx.save();ctx.shadowBlur=t.hero?22:(t.level>=10?14:0);ctx.shadowColor=t.color;ctx.fillStyle=t.color;ctx.beginPath();ctx.arc(t.x,t.y-10,t.hero?20:17,0,Math.PI*2);ctx.fill();ctx.restore();ctx.fillStyle='#242c40';ctx.fillRect(t.x-5,t.y-31,10,23);ctx.fillStyle='#fff';ctx.font='bold 12px sans-serif';ctx.textAlign='center';ctx.fillText(t.level,t.x,t.y+5);ctx.textAlign='left';
+ }else{ctx.fillStyle='#c1b18f';ctx.font='bold 24px sans-serif';ctx.textAlign='center';ctx.fillText('+',p.x,p.y+4);ctx.textAlign='left';}});
+ enemies.forEach(e=>{ctx.fillStyle=e.boss?'#922b50':e.armored?'#9aa9b3':e.fast?'#9ac15d':'#a56d58';ctx.beginPath();ctx.arc(e.x,e.y,e.r,0,Math.PI*2);ctx.fill();ctx.fillStyle='#f4d8bf';ctx.beginPath();ctx.arc(e.x+e.r*.35,e.y-4,3,0,Math.PI*2);ctx.fill();ctx.fillStyle='#211c2a';ctx.fillRect(e.x-e.r,e.y-e.r-11,e.r*2,5);ctx.fillStyle='#dc5353';ctx.fillRect(e.x-e.r,e.y-e.r-11,e.r*2*Math.max(0,e.hp/e.max),5);if(e.boss){ctx.fillStyle='white';ctx.font='bold 13px sans-serif';ctx.fillText('BOSS',e.x-20,e.y-e.r-17);}});
+ shots.forEach(s=>{const k=s.type.startsWith('hero-')?s.type.slice(5):s.type,col=(s.type.startsWith('hero-')?heroDefs[k]?.shot:defs[k]?.shot)||'#fff';ctx.save();ctx.shadowBlur=s.type.startsWith('hero-')?20:11;ctx.shadowColor=col;ctx.fillStyle=col;
+ if(s.type==='archer'||s.branch==='sniper'){ctx.translate(s.x,s.y);ctx.rotate(Math.atan2(s.target.y-s.y,s.target.x-s.x));ctx.beginPath();ctx.moveTo(-10,0);ctx.lineTo(7,-3);ctx.lineTo(12,0);ctx.lineTo(7,3);ctx.closePath();ctx.fill();}
+ else if(s.type==='artillery'||s.type==='hero-siege'){ctx.beginPath();ctx.arc(s.x,s.y,8,0,Math.PI*2);ctx.fill();ctx.fillStyle='#ffd29a';ctx.beginPath();ctx.arc(s.x-3,s.y-3,3,0,Math.PI*2);ctx.fill();}
+ else if(s.type==='assassin'||s.type==='hero-shadow'){ctx.beginPath();ctx.moveTo(s.x-7,s.y);ctx.lineTo(s.x,s.y-7);ctx.lineTo(s.x+8,s.y);ctx.lineTo(s.x,s.y+7);ctx.closePath();ctx.fill();}
+ else if(s.type==='priest'||s.type==='hero-paladin'){ctx.beginPath();ctx.arc(s.x,s.y,7,0,Math.PI*2);ctx.fill();ctx.fillStyle='#fff';ctx.fillRect(s.x-1,s.y-5,2,10);ctx.fillRect(s.x-5,s.y-1,10,2);}
+ else if(s.type==='knight'){ctx.translate(s.x,s.y);ctx.rotate(-.55);ctx.fillRect(-2,-10,4,20);ctx.fillRect(-7,-5,14,3);}
+ else if(s.type==='mage'||s.type==='hero-element'){ctx.translate(s.x,s.y);ctx.rotate(Date.now()/180);ctx.beginPath();ctx.moveTo(0,-9);ctx.lineTo(8,0);ctx.lineTo(0,9);ctx.lineTo(-8,0);ctx.closePath();ctx.fill();}
+ else if(s.type==='spirit'){ctx.translate(s.x,s.y);ctx.rotate(Date.now()/130);for(let n=0;n<4;n++){ctx.rotate(Math.PI/2);ctx.beginPath();ctx.ellipse(0,-6,3,6,0,0,Math.PI*2);ctx.fill();}}
+ else{ctx.beginPath();ctx.arc(s.x,s.y,s.type.startsWith('hero-')?8:5,0,Math.PI*2);ctx.fill();}ctx.restore();});
+ particles.forEach(p=>{ctx.save();ctx.globalAlpha=Math.max(0,p.life/p.max);ctx.fillStyle=p.color;ctx.shadowBlur=9;ctx.shadowColor=p.color;if(p.style==='artillery'||p.style==='hero-siege'){ctx.beginPath();ctx.arc(p.x,p.y,p.r*1.6,0,Math.PI*2);ctx.fill();}else if(p.style==='assassin'||p.style==='hero-shadow'){ctx.translate(p.x,p.y);ctx.rotate(p.life*12);ctx.fillRect(-p.r,-1,p.r*2,2);}else{ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();}ctx.restore();});
+ ctx.fillStyle='#ffffff';ctx.font='bold 14px sans-serif';ctx.fillText('WAVE '+wave,90,27);
+ if(!running||paused||ended){ctx.fillStyle='rgba(5,10,20,.37)';ctx.fillRect(0,0,W,H);ctx.fillStyle='#fff';ctx.textAlign='center';ctx.font='bold 27px Georgia';ctx.fillText(ended?(hp===0?'DEFEAT':'VICTORY'):paused?'PAUSED':mode==='endless'?'ENDLESS SURVIVAL':'DEFEND THE KINGDOM',W/2,112);ctx.font='15px sans-serif';ctx.fillText(ended?'다시 시작 버튼으로 재도전할 수 있습니다.':paused?'일시정지를 해제해 전투를 계속하세요.':mode==='endless'?'성 체력이 0이 될 때까지 버텨라!':'방어 발판을 선택해 타워를 건설하세요.',W/2,141);ctx.textAlign='left';}}
+canvas.addEventListener('click',ev=>{const r=canvas.getBoundingClientRect(),x=(ev.clientX-r.left)*W/r.width,y=(ev.clientY-r.top)*H/r.height;let best=-1,dmin=1e9;pads.forEach((p,i)=>{let d=Math.hypot(p.x-x,p.y-y);if(d<dmin){dmin=d;best=i;}});if(dmin<49){if(fuseMode){if(fuseFirst<0){if(!towers.some(t=>t.pad===best)){ $('message').textContent='융합할 타워가 있는 발판을 선택하세요.';return;}fuseFirst=best;$('message').textContent='첫 번째 융합 재료를 선택했습니다. 두 번째 타워를 선택하세요.';}else if(best===fuseFirst){fuseFirst=-1;$('message').textContent='융합 선택을 취소했습니다.';}else{selected=best;update();draw();return;}}selected=best;update();draw();}});
+document.querySelectorAll('[data-type]').forEach(b=>b.addEventListener('click',()=>{type=b.dataset.type;document.querySelectorAll('[data-type]').forEach(q=>q.classList.toggle('active',q===b));update();}));
+$('build').addEventListener('click',()=>{if(selected<0||towers.some(t=>t.pad===selected)||ended)return;const d=defs[type];if(gold<d.cost)return;gold-=d.cost;const p=pads[selected];towers.push({pad:selected,x:p.x,y:p.y-2,type,damage:d.damage,rate:d.rate,range:d.range,cool:.2,level:1,color:d.color,invested:d.cost,branch:null,hero:null});update();draw();});
+$('upgrade').addEventListener('click',()=>{const t=towers.find(t=>t.pad===selected);if(!t||t.level>=(t.hero?5:10)||gold<upgradeCost(t)||ended)return;const cost=upgradeCost(t);gold-=cost;t.invested+=cost;t.level++;const mult=t.branch?(t.branch==='rapid'||t.branch==='flame'||t.branch==='siege'||t.branch==='shadow'?1.28:1.38):1.32;t.damage*=mult;t.range+=t.branch==='sniper'||t.branch==='siege'?16:8;t.rate*=t.branch==='rapid'||t.branch==='shadow'?.90:.94;update();draw();});
+$('branchA').addEventListener('click',()=>chooseBranch('A'));$('branchB').addEventListener('click',()=>chooseBranch('B'));
+$('fuseMode').addEventListener('click',()=>{fuseMode=!fuseMode;fuseFirst=-1;$('fuseMode').textContent=fuseMode?'융합 선택 취소':'융합 재료 선택';$('message').textContent=fuseMode?'첫 번째 융합 재료 타워를 선택하세요.':'융합 선택을 종료했습니다.';update();});
+$('fuse').addEventListener('click',()=>{const a=towers.find(q=>q.pad===fuseFirst),b=towers.find(q=>q.pad===selected);const recipe=fusionRecipe(a,b);if(!recipe||ended)return;const d=heroDefs[recipe.hero],pad=a.pad,p=pads[pad];const invested=a.invested+b.invested;towers=towers.filter(q=>q!==a&&q!==b);towers.push({pad,x:p.x,y:p.y-2,type:'hero-'+recipe.hero,hero:recipe.hero,damage:d.damage,rate:d.rate,range:d.range,cool:.2,level:1,color:d.color,invested,branch:'hero'});selected=pad;fuseMode=false;fuseFirst=-1;$('fuseMode').textContent='융합 재료 선택';audioReady();sfx('fusion');$('message').textContent=`${d.name} 융합 성공!`;$('hint').textContent='영웅 타워가 탄생했습니다. 최대 Lv.5까지 강화할 수 있습니다.';update();draw();});
+$('demolish').addEventListener('click',()=>{const i=towers.findIndex(t=>t.pad===selected);if(i<0||ended)return;const t=towers[i],refund=Math.floor(t.invested*.2);towers.splice(i,1);gold+=refund;$('message').textContent=`${t.hero?heroDefs[t.hero].name:defs[t.type].name} 철거 완료 · ${refund}G 환급`;$('hint').textContent='철거한 발판에 새로운 타워를 건설할 수 있습니다.';update();draw();});
+$('start').addEventListener('click',()=>{audioReady();begin();});
+$('soundOn').addEventListener('change',()=>{if($('soundOn').checked)audioReady();});
+$('musicOn').addEventListener('change',setMusic);
+$('volume').addEventListener('input',()=>{});
+$('pause').addEventListener('click',()=>{if(!running||ended)return;paused=!paused;$('pause').textContent=paused?'계속하기':'일시정지';$('message').textContent=paused?'일시정지 중':`WAVE ${wave} · 전투 중`;$('waveStatus').textContent=paused?'일시정지':`WAVE ${wave} 진행 중`;draw();});
+$('reset').addEventListener('click',reset);
+$('campaignMode').addEventListener('click',()=>{if(running||ended)return;mode='campaign';reset();});
+$('endlessMode').addEventListener('click',()=>{if(running||ended)return;mode='endless';reset();});
+function loop(now){const dt=Math.min(.04,(now-last)/1000||0);last=now;step(dt);draw();requestAnimationFrame(loop);}
+reset();requestAnimationFrame(loop);
+})();
+</script>
+</body></html>
